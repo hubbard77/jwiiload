@@ -49,7 +49,7 @@ public class JWiiLoad {
 
 	static JButton button5= new JButton("Browse...");
 
-	static 	JFrame frame = new JFrame("JWiiload");
+	static 	JFrame frame = new JFrame("jWiiload");
 	static String host;
 	static String ip;
 
