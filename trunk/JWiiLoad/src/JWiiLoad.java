@@ -2,11 +2,6 @@
 import java.util.prefs.Preferences;
 import java.util.zip.*;
 
-import java.awt.Container;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-//import java.awt.GridLayout;
-import java.awt.TextField;
 import java.io.BufferedInputStream;
 import java.io.DataOutputStream;
 import java.io.FileInputStream;
@@ -21,14 +16,6 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
-import javax.swing.JButton;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.SwingConstants;
-
-
 public class JWiiLoad {
 	static Socket socket;
 	private static Preferences prefs = Preferences.userRoot().node("/com/vgmoose/jwiiload");
@@ -39,36 +26,17 @@ public class JWiiLoad {
 	private static File filename; // = new File("/Users/Ricky/Downloads/wiimod_v3_0/card/app/wiimod/boot.dol");
 	private static File compressed;
 	private static String arguments ="";
-
-	private static final JFileChooser fileselect = new JFileChooser();
-
-	static JLabel textLabel = new JLabel("What.",SwingConstants.CENTER);
-	static JLabel text1 = new JLabel("",SwingConstants.CENTER);
-	static JLabel text2 = new JLabel("",SwingConstants.CENTER);
-
-	static JButton button1 = new JButton("Enter IP");
-	static JButton button2 = new JButton("Arguments");
-
-	static JButton button5= new JButton("Browse...");
-
-	static 	JFrame frame = new JFrame("jWiiload");
+	
 	static String host;
 	static String ip;
 
-	static TextField wiiip = new TextField("Enter Wii IP");
-
-	static int startip = prefs.getInt("start", 0);
 	static String lastip = prefs.get("host", "null");
 	static boolean autosend = prefs.getBoolean("auto", true);
-	static int timeout = prefs.getInt("timeout",100);
 
-	static String[] gargs;
+	static boolean cli = false;
 
 	public static void main(String[] args) 
 	{
-		//button5.setEnabled(false);
-		gargs = args;
-
 		if (args.length==1)
 		{
 			System.out.println("JWiiload .9\ncoded by VGMoose, based on wiiload by dhewg\n\nusage:\n\tjava -jar JWiiload.jar <address> <filename> <application arguments>\n\npass $WIILOAD as the first argument if your environment is set up that way.\n\npass \"AUTO\" as the first argument to try to automatically find the Wii.\n\npass \"PREV\" as the first argument to use the last known Wii IP that worked.\n");
@@ -77,6 +45,7 @@ public class JWiiLoad {
 		if (args.length!=0)
 		{
 			System.out.println("Welcome to JWiiload CLI!");
+			cli = true;
 			
 			filename = new File(args[1]);
 			if (!filename.exists())
@@ -145,18 +114,18 @@ public class JWiiLoad {
 		else
 		{
 			do{
-				fileselect.showOpenDialog(null);
-				filename = fileselect.getSelectedFile();
+				filename = GUI.chooseFile();
 			}while(filename==null);
 
-			createWindow();		// Create the JFrame GUI
+			GUI.createWindow();		// Create the JFrame GUI
 
 		}
 
 		if (filename!=null)
 		{
 			//button5.setEnabled(true);
-			button5.setText("Send "+filename.getName());
+			if (!cli)
+				GUI.button5.setText("Send "+filename.getName());
 		}
 
 		if (filename!=null)
@@ -197,10 +166,10 @@ public class JWiiLoad {
 		try
 		{
 			// Compress the file to send it faster
-			text1.setText("Compressing data...");
+			updateLabel("Compressing data...");
 			System.out.println("Compressing data...");
 			compressed = compressFile(filename);
-			text1.setText("Data compressed!");	//+ (int)(100*((compressed.length()+0.0)/filename.length()))+"% smaller)");
+			updateLabel("Data compressed!");
 			System.out.println("Compression successful! ("+(int)(100*((compressed.length()+0.0)/filename.length()))+"% smaller)\n");
 
 		} catch(Exception e){
@@ -231,12 +200,12 @@ public class JWiiLoad {
 			if (host==null)
 				socket = new Socket(host, port);
 
-			text1.setText("Talking to Wii...");
+			updateLabel("Talking to Wii...");
 
 			OutputStream os = socket.getOutputStream();
 			DataOutputStream dos = new DataOutputStream(os);
 
-			text1.setText("Preparing data...");
+			updateLabel("Preparing data...");
 			System.out.println("Preparing local data...");
 
 			byte max = 0;
@@ -254,7 +223,7 @@ public class JWiiLoad {
 			byte b[]=new byte[128*1024];
 			int numRead=0;
 
-			text1.setText("Talking to Wii...");
+			updateLabel("Talking to Wii...");
 			System.out.println("Perparing remote data...");
 
 			dos.writeBytes("HAXX");
@@ -269,7 +238,7 @@ public class JWiiLoad {
 
 			//dos.size();	// Number of bytes sent so far, should be 16
 
-			text1.setText("Sending "+filename.getName()+"...");
+			updateLabel("Sending "+filename.getName());
 			System.out.println("Sending "+filename.getName()+"...");
 			dos.flush();
 
@@ -279,7 +248,7 @@ public class JWiiLoad {
 			}
 			dos.flush();
 
-			text1.setText("Talking to Wii...");
+			updateLabel("Talking to Wii...");
 			if (arguments.length()!=0)
 				System.out.println("Sending arguments...");
 			else
@@ -292,7 +261,7 @@ public class JWiiLoad {
 			for (String x : argue)
 				dos.writeBytes(x+"\0");
 
-			text1.setText("All done!");
+			updateLabel("All done!");
 			System.out.println("\nFile transfer successful!");
 
 			if (compressed!=filename)
@@ -302,19 +271,18 @@ public class JWiiLoad {
 		}
 		catch (Exception ce)
 		{
-			text1.setText("No Wii found");
-			String[] selections = {"Retry","Stop"};
+			updateLabel("No Wii found");
 			int a=0;
 
 			if (host==null)
 				host="";
 
-			if (gargs.length==0)
+			if (!cli)
 			{
 				if (host.equals("rate"))
-					a = JOptionPane.showOptionDialog(frame,"Rate Limit Exceeded.\nPlease wait a little while, then try again.","Error", JOptionPane.ERROR_MESSAGE, 0, null, selections, null);
+					a = GUI.showRate();
 				else
-					a = JOptionPane.showOptionDialog(frame,"No Wii found.\nIs the Homebrew Channel running?","Error",JOptionPane.ERROR_MESSAGE, 0, null,selections,null);
+					a= GUI.showLost();
 			}
 			else
 			{
@@ -330,12 +298,18 @@ public class JWiiLoad {
 
 		}
 	}
+	
+	static void updateLabel(String s)
+	{
+		if (!cli)
+			GUI.text1.setText(s);
+	}
 
 	static void scan(int t)
 	{			
 		host=null;
 
-		text1.setText("Finding Wii...");
+		updateLabel("Finding Wii...");
 		System.out.println("Searching for a Wii...");
 		String output = null;
 
@@ -367,7 +341,7 @@ public class JWiiLoad {
 					{
 						socket = new Socket(output,port);
 						System.out.println("and is potentially a Wii!");
-						text1.setText("Wii found!");
+						updateLabel("Wii found!");
 						host=output;
 						return;
 					} catch (Exception e) {
@@ -377,7 +351,7 @@ public class JWiiLoad {
 
 				}
 			} catch (ConnectException e) {
-				text1.setText("Rate Limited");
+				updateLabel("Rate limited");
 				host="rate";
 				e.printStackTrace();
 				return;
@@ -388,43 +362,6 @@ public class JWiiLoad {
 		} 
 
 		return;
-
-
-
-	}
-
-	private static void createWindow() {
-
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); 
-		text1.setPreferredSize(new Dimension(200, 20));
-		//button1.setSize(100,100);
-		Container content = frame.getContentPane();
-
-
-		FlowLayout fl = new FlowLayout();
-
-		content.setLayout(fl);
-
-		content.add(text1);
-
-		content.add(wiiip);
-		content.add(button5);
-
-		//	content.add(button1);
-		//	content.add(button2);
-
-
-
-
-		//	content.add(button5);
-
-
-		//		frame.setResizable(false);
-		frame.setSize(200,400);
-		frame.setLocationRelativeTo(null);
-		frame.pack();
-		frame.setVisible(true);
-
 
 	}
 
