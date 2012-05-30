@@ -27,6 +27,8 @@ public class JWiiLoad {
 	private static File compressed;
 	private static String arguments ="";
 	
+	static GUI framey;
+	
 	static String host;
 	static String ip;
 
@@ -39,7 +41,7 @@ public class JWiiLoad {
 	{
 		if (args.length==1)
 		{
-			System.out.println("JWiiload .9\ncoded by VGMoose, based on wiiload by dhewg\n\nusage:\n\tjava -jar JWiiload.jar <address> <filename> <application arguments>\n\npass $WIILOAD as the first argument if your environment is set up that way.\n\npass \"AUTO\" as the first argument to try to automatically find the Wii.\n\npass \"PREV\" as the first argument to use the last known Wii IP that worked.\n");
+			System.out.println("JWiiload 1.0\ncoded by VGMoose, based on wiiload by dhewg\n\nusage:\n\tjava -jar JWiiload.jar <address> <filename> <application arguments>\n\npass $WIILOAD as the first argument if your environment is set up that way.\n\npass \"AUTO\" as the first argument to try to automatically find the Wii.\n\npass \"PREV\" as the first argument to use the last known Wii IP that worked.\n");
 			System.exit(27);
 		}
 		if (args.length!=0)
@@ -113,23 +115,22 @@ public class JWiiLoad {
 		}
 		else
 		{
+			framey = new GUI();		// Create the JFrame GUI
+
 			do{
-				filename = GUI.chooseFile();
+				filename = framey.chooseFile();
 			}while(filename==null);
-
-			GUI.createWindow();		// Create the JFrame GUI
-
 		}
 
 		if (filename!=null)
 		{
 			//button5.setEnabled(true);
 			if (!cli)
-				GUI.button5.setText("Send "+filename.getName());
+				framey.setText("Send "+filename.getName());
+			
+			compressData();	
 		}
 
-		if (filename!=null)
-			compressData();	
 
 		Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
 			public void run() {
@@ -166,10 +167,10 @@ public class JWiiLoad {
 		try
 		{
 			// Compress the file to send it faster
-			updateLabel("Compressing data...");
+			framey.setText("Compressing data...");
 			System.out.println("Compressing data...");
 			compressed = compressFile(filename);
-			updateLabel("Data compressed!");
+			framey.setText("Data compressed!");
 			System.out.println("Compression successful! ("+(int)(100*((compressed.length()+0.0)/filename.length()))+"% smaller)\n");
 
 		} catch(Exception e){
@@ -200,12 +201,12 @@ public class JWiiLoad {
 			if (host==null)
 				socket = new Socket(host, port);
 
-			updateLabel("Talking to Wii...");
+			framey.setText("Talking to Wii...");
 
 			OutputStream os = socket.getOutputStream();
 			DataOutputStream dos = new DataOutputStream(os);
 
-			updateLabel("Preparing data...");
+			framey.setText("Preparing data...");
 			System.out.println("Preparing local data...");
 
 			byte max = 0;
@@ -223,7 +224,7 @@ public class JWiiLoad {
 			byte b[]=new byte[128*1024];
 			int numRead=0;
 
-			updateLabel("Talking to Wii...");
+			framey.setText("Talking to Wii...");
 			System.out.println("Perparing remote data...");
 
 			dos.writeBytes("HAXX");
@@ -238,7 +239,7 @@ public class JWiiLoad {
 
 			//dos.size();	// Number of bytes sent so far, should be 16
 
-			updateLabel("Sending "+filename.getName());
+			framey.setText("Sending "+filename.getName());
 			System.out.println("Sending "+filename.getName()+"...");
 			dos.flush();
 
@@ -248,7 +249,7 @@ public class JWiiLoad {
 			}
 			dos.flush();
 
-			updateLabel("Talking to Wii...");
+			framey.setText("Talking to Wii...");
 			if (arguments.length()!=0)
 				System.out.println("Sending arguments...");
 			else
@@ -261,7 +262,7 @@ public class JWiiLoad {
 			for (String x : argue)
 				dos.writeBytes(x+"\0");
 
-			updateLabel("All done!");
+			framey.setText("All done!");
 			System.out.println("\nFile transfer successful!");
 
 			if (compressed!=filename)
@@ -271,7 +272,7 @@ public class JWiiLoad {
 		}
 		catch (Exception ce)
 		{
-			updateLabel("No Wii found");
+			framey.setText("No Wii found");
 			int a=0;
 
 			if (host==null)
@@ -280,9 +281,9 @@ public class JWiiLoad {
 			if (!cli)
 			{
 				if (host.equals("rate"))
-					a = GUI.showRate();
+					a = framey.showRate();
 				else
-					a= GUI.showLost();
+					a= framey.showLost();
 			}
 			else
 			{
@@ -298,18 +299,12 @@ public class JWiiLoad {
 
 		}
 	}
-	
-	static void updateLabel(String s)
-	{
-		if (!cli)
-			GUI.text1.setText(s);
-	}
 
 	static void scan(int t)
 	{			
 		host=null;
 
-		updateLabel("Finding Wii...");
+		framey.setText("Finding Wii...");
 		System.out.println("Searching for a Wii...");
 		String output = null;
 
@@ -318,9 +313,13 @@ public class JWiiLoad {
 		try {
 			localhost = InetAddress.getLocalHost();
 		} catch (UnknownHostException e1) {
-			// TODO Auto-generated catch block
+			System.out.println("Auto-locate not supported on this system.");
+			framey.setText("Auto-locate not supported.");
+			if (cli) System.exit(8);
+			
 			e1.printStackTrace();
 		}
+		
 		// this code assumes IPv4 is used
 		byte[] ip = localhost.getAddress();
 
@@ -341,7 +340,7 @@ public class JWiiLoad {
 					{
 						socket = new Socket(output,port);
 						System.out.println("and is potentially a Wii!");
-						updateLabel("Wii found!");
+						framey.setText("Wii found!");
 						host=output;
 						return;
 					} catch (Exception e) {
@@ -351,7 +350,7 @@ public class JWiiLoad {
 
 				}
 			} catch (ConnectException e) {
-				updateLabel("Rate limited");
+				framey.setText("Rate limited");
 				host="rate";
 				e.printStackTrace();
 				return;
