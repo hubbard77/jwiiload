@@ -21,11 +21,11 @@ public class JWiiLoad {
 	private static Preferences prefs = Preferences.userRoot().node("/com/vgmoose/jwiiload");
 
 	// host and port of receiving wii (use 4299 and your own ip) also the .dol
-	private static final int    port = 4299;
+	//private static final int    port = 4299;
 	//	private static final String host = "192.168.1.105";
-	private static File filename; // = new File("/Users/Ricky/Downloads/wiimod_v3_0/card/app/wiimod/boot.dol");
-	private static File compressed;
-	private static String arguments ="";
+	static File filename; // = new File("/Users/Ricky/Downloads/wiimod_v3_0/card/app/wiimod/boot.dol");
+	static File compressed;
+	//private static String arguments ="";
 	
 	static GUI framey;
 	
@@ -34,6 +34,8 @@ public class JWiiLoad {
 
 	static String lastip = prefs.get("host", "null");
 	static boolean autosend = prefs.getBoolean("auto", true);
+	static int port = prefs.getInt("port",4299);
+	static String arguments = prefs.get("args","");
 
 	static boolean cli = false;
 
@@ -59,7 +61,7 @@ public class JWiiLoad {
 			if (args[0].startsWith("tcp:"))
 				args[0]=args[0].substring(4);
 
-			if (args[0].equals("PREV"))
+			if (args[0].equalsIgnoreCase("PREV"))
 			{
 				if (lastip.equals("null"))
 				{
@@ -70,7 +72,7 @@ public class JWiiLoad {
 					args[0]=lastip;
 			}
 
-			if (args[0].equals("AUTO"))
+			if (args[0].equalsIgnoreCase("AUTO"))
 			{	
 				tripleScan();
 				if (host==null)
@@ -117,16 +119,14 @@ public class JWiiLoad {
 		{
 			framey = new GUI();		// Create the JFrame GUI
 
-			do{
-				filename = framey.chooseFile();
-			}while(filename==null);
+			filename = framey.chooseFile();
 		}
 
 		if (filename!=null)
 		{
 			//button5.setEnabled(true);
 			if (!cli)
-				framey.setText("Send "+filename.getName());
+				framey.setButton(true);
 			
 			compressData();	
 		}
@@ -136,13 +136,21 @@ public class JWiiLoad {
 			public void run() {
 				if (compressed!=filename)
 					compressed.delete();
+				
+				// Write preferences
+				if (host!=null && !host.equals("rate"))
+					prefs.put("host",host);
+				prefs.putBoolean("auto", autosend);
+				prefs.putInt("port",port);
+				prefs.put("args",arguments);
+				
 			}
 		}));
 
-		if (args.length==0)
+		if (args.length==0 && autosend)
 			tripleScan();
 
-		if (filename!=null)
+		if (filename!=null && autosend)
 			wiisend();
 
 	}
@@ -196,7 +204,7 @@ public class JWiiLoad {
 		try
 		{
 			// Open socket to wii with host and port and setup output stream
-			System.out.println("Greeting the Wii...");
+			if (cli) System.out.println("Greeting the Wii...");
 
 			if (host==null)
 				socket = new Socket(host, port);
