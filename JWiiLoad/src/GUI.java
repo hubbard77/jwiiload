@@ -1,6 +1,7 @@
 import java.awt.Container;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.Image;
 import java.awt.TextField;
 import java.awt.Toolkit;
@@ -11,10 +12,10 @@ import java.awt.event.ItemListener;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
+import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
@@ -30,7 +31,7 @@ import javax.swing.SwingConstants;
 @SuppressWarnings("serial")
 public class GUI extends JFrame implements ActionListener, ItemListener
 {			
-	private JLabel text1 = new JLabel("",SwingConstants.CENTER);
+	private JLabel text1 = new JLabel("Choose a file.",SwingConstants.CENTER);
 	private final JFileChooser fileselect = new JFileChooser();
 
 	private JMenu menu = new JMenu("Wii Options");
@@ -45,12 +46,11 @@ public class GUI extends JFrame implements ActionListener, ItemListener
 	private JMenuItem h3 = new JMenuItem("About");	
 
 	private JMenuItem browse = new JMenuItem("Open...");
-	private TextField wiiip = new TextField("");
-	private JButton send = new JButton("Send");
+	private JButton send = new JButton("   Send   ");
 	private JButton button5= new JButton("Browse...");
 
-
-
+	static JLabel filename = new JLabel("No file selected...",SwingConstants.LEFT);
+	static TextField wiiip = new TextField("xxx.xxx.x.x");
 
 	public GUI()
 	{
@@ -75,6 +75,8 @@ public class GUI extends JFrame implements ActionListener, ItemListener
 		help.add(h2);
 		help.add(h3);
 
+		wiiip.setPreferredSize(new Dimension(10,1));
+
 		file.add(browse);
 
 		cbMenuItem.setMnemonic(KeyEvent.VK_C);
@@ -94,24 +96,78 @@ public class GUI extends JFrame implements ActionListener, ItemListener
 		h1.addActionListener(this);
 		h2.addActionListener(this);
 		h3.addActionListener(this);
-		
+
 		cbMenuItem.addActionListener(this);
 		send.addActionListener(this);
+
 		menuItem.addActionListener(this);
+
 		menuItem2.addActionListener(this);
-		
+
 		button5.addActionListener(this);
 
 
-		FlowLayout fl = new FlowLayout();
+		//		FlowLayout fl = new FlowLayout();
+		GridBagLayout fl = new GridBagLayout();
+
 
 		content.setLayout(fl);
+		//
+		//		content.add(text1);
+		//		content.add(filename);
+		//		content.add(button5);
 
-		content.add(text1);
+		GridBagConstraints c = new GridBagConstraints();
 
-		content.add(wiiip);
-		content.add(button5);
-		frame.add(send);
+		//		c.fill = GridBagConstraints.HORIZONTAL;
+		//		c.weightx = 0;
+		//		c.gridx = 0;
+		//		c.gridy = 0;
+		//		c.gridwidth=8;
+		//		content.add(text1, c);
+
+		c.fill = GridBagConstraints.WEST;
+		c.weightx = 0.5;
+		c.gridx = 0;
+		c.gridy = 2;
+		c.gridwidth=4;
+		content.add(filename, c);
+
+		c.fill = GridBagConstraints.EAST;
+		c.weightx = 0.5;
+		c.gridx = 4;
+		c.gridy = 2;
+		content.add(button5, c);
+
+		c.fill = GridBagConstraints.WEST;
+		c.weightx = 0.5;
+		c.gridx = 0;
+		c.gridy = 3;
+		c.gridwidth=4;
+		content.add(wiiip, c);
+
+		c.fill = GridBagConstraints.EAST;
+		c.weightx = 0.5;
+		c.gridx = 4;
+		c.gridy = 3;
+		content.add(send, c);
+
+		//		button = new JButton("Long-Named Button 4");
+		//		c.fill = GridBagConstraints.HORIZONTAL;
+		//		c.ipady = 40;      //make this component tall
+		//		c.weightx = 0.0;
+		//		c.gridwidth = 3;
+		//		c.gridx = 0;
+		//		c.gridy = 1;
+		//		content.add(button, c);
+
+
+
+
+		//		
+		//		
+		//		content.add(wiiip,c);
+		//		content.add(send,c);
 
 
 		frame.setSize(200,400);
@@ -119,13 +175,17 @@ public class GUI extends JFrame implements ActionListener, ItemListener
 		frame.pack();
 		frame.setVisible(true);
 		frame.setJMenuBar(menuBar);
+		frame.pack();
+		
+		wiiip.setText(JWiiLoad.lastip);
+
 	}
 
 	public void setText(String s)
 	{
 		text1.setText(s);
 	}
-	
+
 	public void setButton(boolean b)
 	{
 		send.setEnabled(b);
@@ -135,7 +195,7 @@ public class GUI extends JFrame implements ActionListener, ItemListener
 	{
 		fileselect.showOpenDialog(null);
 		File filename = fileselect.getSelectedFile();
-
+		
 		return filename;
 	}
 
@@ -150,7 +210,6 @@ public class GUI extends JFrame implements ActionListener, ItemListener
 	{
 		String[] selections = {"Retry","Stop"};
 		return JOptionPane.showOptionDialog(this,"Rate Limit Exceeded.\nPlease wait a little while, then try again.","Error", JOptionPane.ERROR_MESSAGE, 0, null, selections, null);
-
 	}
 
 	@Override
@@ -160,7 +219,7 @@ public class GUI extends JFrame implements ActionListener, ItemListener
 	public void actionPerformed(ActionEvent e) {
 		if (e.getSource() == h1)
 		{
-			JWiiLoad.lastip = null;
+			JWiiLoad.lastip = "0.0.0.0";
 			JWiiLoad.autosend = true;	
 			JWiiLoad.port = 4299;
 			JWiiLoad.arguments = "";
@@ -172,26 +231,76 @@ public class GUI extends JFrame implements ActionListener, ItemListener
 		{
 			String[] selections = {"Visit Site","Close"};
 			URL url =  getClass().getResource("jwiiload.png");
-			System.out.println(url);
-			
+
 			Image image1 = Toolkit.getDefaultToolkit().getImage(url);
 
 			ImageIcon image = new ImageIcon(image1);
-			
+
 			int a = JOptionPane.showOptionDialog(this,"JWiiload 1.0\nby Ricky Ayoub (VGMoose)       ","About jWiiload", 0, 0, image, selections, null);
 			if (a==0) goOnline("http://www.rickyayoub.com");
 		}
 		else if (e.getSource() == cbMenuItem)
+		{
 			JWiiLoad.autosend = cbMenuItem.getState();
+			//			if (JWiiLoad.autosend && JWiiLoad.filename!=null)
+			//			{
+			////				text1.setText("Finding Wii...");
+			////				JWiiLoad.tripleScan();
+			//			}
+			//			else
+			JWiiLoad.stopscan = true;
+		}
 		else if (e.getSource() == browse || e.getSource() == button5)
 		{
 			JWiiLoad.filename = chooseFile();
+
 			if (JWiiLoad.filename!=null)
+			{
 				send.setEnabled(true);
+				filename.setText(JWiiLoad.filename.getName()+" "+JWiiLoad.arguments);
+				JWiiLoad.compressData();
+				//				if (JWiiLoad.autosend)
+				//				{				
+				//					text1.setText("Finding Wii...");
+				//					text1.invalidate();
+				//					text1.validate();
+				//					text1.repaint();
+				//					JWiiLoad.tripleScan();
+				//				}
+			}
 			else
 				send.setEnabled(false);
 		}
-
+		else if (e.getSource() == menuItem)
+		{
+			String s = JOptionPane.showInputDialog("Enter the new port number:",JWiiLoad.port);
+			if (s!=null)
+				JWiiLoad.port = Integer.parseInt(s);
+		}
+		else if (e.getSource() == menuItem2)
+		{
+			String s = JOptionPane.showInputDialog("Enter as many arguments as necessary:",JWiiLoad.arguments);
+			if (s!=null)
+			{
+				JWiiLoad.arguments = s;
+				if (JWiiLoad.filename!=null)
+					filename.setText(JWiiLoad.filename.getName()+" "+s);
+			}
+		}
+		else if (e.getSource() == send)
+		{
+			JWiiLoad.host = wiiip.getText();
+			
+			try {
+				System.out.println("Greeting Wii...");
+				JWiiLoad.socket = new Socket(JWiiLoad.host,JWiiLoad.port);
+				
+				JWiiLoad.wiisend();
+			} catch (Exception e1) {
+				System.out.println("No Wii found at " + JWiiLoad.host+"!");
+			}
+			
+		}
 
 	}
 
