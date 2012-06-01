@@ -26,16 +26,18 @@ public class JWiiLoad {
 	static File filename; // = new File("/Users/Ricky/Downloads/wiimod_v3_0/card/app/wiimod/boot.dol");
 	static File compressed;
 	//private static String arguments ="";
-	
+
 	static GUI framey;
-	
+
 	static String host;
 	static String ip;
 
-	static String lastip = prefs.get("host", "null");
+	static String lastip = prefs.get("host", "0.0.0.0");
 	static boolean autosend = prefs.getBoolean("auto", true);
 	static int port = prefs.getInt("port",4299);
 	static String arguments = prefs.get("args","");
+
+	static boolean stopscan = false;
 
 	static boolean cli = false;
 
@@ -50,7 +52,7 @@ public class JWiiLoad {
 		{
 			System.out.println("Welcome to JWiiload CLI!");
 			cli = true;
-			
+
 			filename = new File(args[1]);
 			if (!filename.exists())
 			{
@@ -104,12 +106,12 @@ public class JWiiLoad {
 				}
 
 			System.out.print("Arguments: "+arguments);
-			
+
 			if (arguments.length()==0)
 				System.out.print("none");
-			
+
 			System.out.println("\n");
-			
+
 			if (socket==null)
 				if (!connects())
 					System.exit(1);
@@ -119,7 +121,13 @@ public class JWiiLoad {
 		{
 			framey = new GUI();		// Create the JFrame GUI
 
-			filename = framey.chooseFile();
+			if (autosend)
+			{
+				filename = framey.chooseFile();
+
+				if (JWiiLoad.filename!=null)
+					GUI.filename.setText(JWiiLoad.filename.getName());
+			}
 		}
 
 		if (filename!=null)
@@ -127,30 +135,29 @@ public class JWiiLoad {
 			//button5.setEnabled(true);
 			if (!cli)
 				framey.setButton(true);
-			
+
 			compressData();	
 		}
 
 
 		Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
 			public void run() {
-				if (compressed!=filename)
-					compressed.delete();
-				
+
 				// Write preferences
-				if (host!=null && !host.equals("rate"))
-					prefs.put("host",host);
+				prefs.put("host",lastip);
 				prefs.putBoolean("auto", autosend);
 				prefs.putInt("port",port);
 				prefs.put("args",arguments);
 				
+				if (compressed!=filename)
+					compressed.delete();
 			}
 		}));
 
-		if (args.length==0 && autosend)
+		if (args.length==0 && autosend && filename!=null)
 			tripleScan();
 
-		if (filename!=null && autosend)
+		if (filename!=null && (autosend || cli))
 			wiisend();
 
 	}
@@ -158,7 +165,7 @@ public class JWiiLoad {
 	public static boolean connects()
 	{
 		System.out.println("Connecting to "+host+"...");
-		
+
 		try{
 			socket = new Socket(host, port);
 			System.out.println("Connection successful!\n");
@@ -167,9 +174,9 @@ public class JWiiLoad {
 			System.out.println("Connection failed.");
 			return false;
 		}
-		
+
 	}
-	
+
 	public static void compressData()
 	{
 		try
@@ -190,7 +197,8 @@ public class JWiiLoad {
 
 	public static void tripleScan()
 	{
-		for (int x=0; x<4; x++)
+		stopscan = false;
+		for (int x=0; x<3; x++)
 		{
 			scan(x);
 			if (host!=null)
@@ -276,6 +284,8 @@ public class JWiiLoad {
 			if (compressed!=filename)
 				compressed.delete();
 
+			lastip = host;
+
 
 		}
 		catch (Exception ce)
@@ -286,6 +296,8 @@ public class JWiiLoad {
 			if (host==null)
 				host="";
 
+			System.out.println("No Wii found at "+host+"!");
+
 			if (!cli)
 			{
 				if (host.equals("rate"))
@@ -295,10 +307,9 @@ public class JWiiLoad {
 			}
 			else
 			{
-				System.out.println("No Wii found at "+host+"!");
 				System.exit(1);
 			}
-			
+
 			if (a==0)
 			{
 				tripleScan();
@@ -324,10 +335,10 @@ public class JWiiLoad {
 			System.out.println("Auto-locate not supported on this system.");
 			framey.setText("Auto-locate not supported.");
 			if (cli) System.exit(8);
-			
+
 			e1.printStackTrace();
 		}
-		
+
 		// this code assumes IPv4 is used
 		byte[] ip = localhost.getAddress();
 
@@ -365,6 +376,13 @@ public class JWiiLoad {
 			} catch (Exception e) {
 				e.printStackTrace();
 				return;
+			}
+
+			if (stopscan)
+			{
+				framey.setText("Scan aborted");
+				System.out.println("Scan aborted");
+				break;
 			}
 		} 
 
