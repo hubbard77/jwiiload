@@ -52,6 +52,8 @@ public class JWiiLoad {
 		{
 			System.out.println("Welcome to JWiiload CLI!");
 			cli = true;
+			
+			port = 4299;
 
 			filename = new File(args[1]);
 			if (!filename.exists())
@@ -65,7 +67,7 @@ public class JWiiLoad {
 
 			if (args[0].equalsIgnoreCase("PREV"))
 			{
-				if (lastip.equals("null"))
+				if (lastip.equals("0.0.0.0"))
 				{
 					System.out.println("There is no known previous working IP stored in this machine!");
 					args[0]="AUTO";
@@ -146,7 +148,7 @@ public class JWiiLoad {
 				// Write preferences
 				prefs.put("host",lastip);
 				prefs.putBoolean("auto", autosend);
-				prefs.putInt("port",port);
+				if (!cli) prefs.putInt("port",port);
 				prefs.put("args",arguments);
 				
 				if (compressed!=filename)
@@ -182,10 +184,10 @@ public class JWiiLoad {
 		try
 		{
 			// Compress the file to send it faster
-			framey.setText("Compressing data...");
+			if (!cli) framey.setText("Compressing data...");
 			System.out.println("Compressing data...");
 			compressed = compressFile(filename);
-			framey.setText("Data compressed!");
+			if (!cli) framey.setText("Data compressed!");
 			System.out.println("Compression successful! ("+(int)(100*((compressed.length()+0.0)/filename.length()))+"% smaller)\n");
 
 		} catch(Exception e){
@@ -217,12 +219,12 @@ public class JWiiLoad {
 			if (host==null)
 				socket = new Socket(host, port);
 
-			framey.setText("Talking to Wii...");
+			if (!cli) framey.setText("Talking to Wii...");
 
 			OutputStream os = socket.getOutputStream();
 			DataOutputStream dos = new DataOutputStream(os);
 
-			framey.setText("Preparing data...");
+			if (!cli) framey.setText("Preparing data...");
 			System.out.println("Preparing local data...");
 
 			byte max = 0;
@@ -240,7 +242,7 @@ public class JWiiLoad {
 			byte b[]=new byte[128*1024];
 			int numRead=0;
 
-			framey.setText("Talking to Wii...");
+			if (!cli) framey.setText("Talking to Wii...");
 			System.out.println("Perparing remote data...");
 
 			dos.writeBytes("HAXX");
@@ -255,7 +257,7 @@ public class JWiiLoad {
 
 			//dos.size();	// Number of bytes sent so far, should be 16
 
-			framey.setText("Sending "+filename.getName());
+			if (!cli) framey.setText("Sending "+filename.getName());
 			System.out.println("Sending "+filename.getName()+"...");
 			dos.flush();
 
@@ -265,7 +267,7 @@ public class JWiiLoad {
 			}
 			dos.flush();
 
-			framey.setText("Talking to Wii...");
+			if (!cli) framey.setText("Talking to Wii...");
 			if (arguments.length()!=0)
 				System.out.println("Sending arguments...");
 			else
@@ -278,19 +280,18 @@ public class JWiiLoad {
 			for (String x : argue)
 				dos.writeBytes(x+"\0");
 
-			framey.setText("All done!");
+			if (!cli) framey.setText("All done!");
 			System.out.println("\nFile transfer successful!");
 
+			lastip = host;
+			
 			if (compressed!=filename)
 				compressed.delete();
-
-			lastip = host;
-
 
 		}
 		catch (Exception ce)
 		{
-			framey.setText("No Wii found");
+			if (!cli) framey.setText("No Wii found");
 			int a=0;
 
 			if (host==null)
@@ -323,7 +324,7 @@ public class JWiiLoad {
 	{			
 		host=null;
 
-		framey.setText("Finding Wii...");
+		if (!cli) framey.setText("Finding Wii...");
 		System.out.println("Searching for a Wii...");
 		String output = null;
 
@@ -333,8 +334,8 @@ public class JWiiLoad {
 			localhost = InetAddress.getLocalHost();
 		} catch (UnknownHostException e1) {
 			System.out.println("Auto-locate not supported on this system.");
-			framey.setText("Auto-locate not supported.");
-			if (cli) System.exit(8);
+			if (!cli) framey.setText("Auto-locate not supported.");
+			else System.exit(8);
 
 			e1.printStackTrace();
 		}
@@ -359,7 +360,12 @@ public class JWiiLoad {
 					{
 						socket = new Socket(output,port);
 						System.out.println("and is potentially a Wii!");
-						framey.setText("Wii found!");
+						if (!cli) 
+							{
+							framey.setText("Wii found!");
+							GUI.wiiip.setText(output);
+							}
+						
 						host=output;
 						return;
 					} catch (Exception e) {
@@ -369,7 +375,7 @@ public class JWiiLoad {
 
 				}
 			} catch (ConnectException e) {
-				framey.setText("Rate limited");
+				if (!cli) framey.setText("Rate limited");
 				host="rate";
 				e.printStackTrace();
 				return;
@@ -380,7 +386,7 @@ public class JWiiLoad {
 
 			if (stopscan)
 			{
-				framey.setText("Scan aborted");
+				if (!cli) framey.setText("Scan aborted");
 				System.out.println("Scan aborted");
 				break;
 			}
