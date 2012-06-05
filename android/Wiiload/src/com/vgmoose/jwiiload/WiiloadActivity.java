@@ -11,7 +11,6 @@ import java.io.OutputStream;
 import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.zip.*;
 
 import android.app.Activity;
@@ -50,19 +49,23 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 
 	static File compressed;
 	static  boolean stopscan = false;
+	static boolean fext=true;
 
 	static TextView status;
+	static TextView fname;
 	static String lastip = "0.0.0.0";
 
 	public static void tripleScan()
 	{
 		stopscan = false;
-		for (int x=0; x<3; x++)
+		for (int x=1; x<3; x++)
 		{
 			scan(x);
 			if (host!=null)
 				break;
 		}
+		
+		wiisend();
 	}
 
 	/** Called when the activity is first created. */
@@ -71,12 +74,16 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 		super.onCreate(savedInstanceState);
 		context = getApplicationContext();
 		RelativeLayout a = new RelativeLayout(context);
+		
 		status = new TextView(context);
+		fname = new TextView(context);
+		
 		updateStatus("Ready to send data");
 		b = new Button(context);
 		c = new Button(context);
 		b.setText("Choose File");
-		c.setText("Auto-Locate");
+		c.setText("Send to Wii");
+		c.setEnabled(false);
 		a.addView(b);
 		a.addView(status);
 		setContentView(a);
@@ -88,9 +95,17 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 
 		RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(350, 100);
 		params.topMargin = 200;
+		
+		RelativeLayout.LayoutParams params2 = new RelativeLayout.LayoutParams(650, 100);
+		params2.topMargin = 130;
+		params2.leftMargin = 20;
+		
+		RelativeLayout.LayoutParams params3 = new RelativeLayout.LayoutParams(650, 100);
+		params3.topMargin = 230;
+		params3.leftMargin = 20;
 
-		a.addView(c,params);  //This button doesn't work, returns 127.0.0.1 address
-
+		a.addView(c,params);  
+		a.addView(fname, params2);
 		b.setOnClickListener(this);
 		c.setOnClickListener(this);
 
@@ -141,6 +156,8 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 			// Open socket to wii with host and port and setup output stream
 			if (host==null)
 				socket = new Socket(host, port);
+			
+			compressData();
 
 			updateStatus("Talking to Wii...");
 
@@ -237,6 +254,12 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 		}
 	}
 	
+	static void updateName()
+	{
+		fname.setText(filename.getName());
+		c.setEnabled(true);
+	}
+	
 	static void updateStatus(String s)
 	{
 		Log.d("STRING",s);
@@ -244,10 +267,10 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 
 	public String intToIp(int i) {
 
-	   return ((i >> 24 ) & 0xFF ) + "." +
-	               ((i >> 16 ) & 0xFF) + "." +
+		// get xxx.xxx.xxx. to prepare for search
+	   return (i & 0xFF ) + "." +
 	               ((i >> 8 ) & 0xFF) + "." +
-	               ( i & 0xFF) ;
+	               ((i >> 16 ) & 0xFF) + ".";
 	}
 
 	static void scan(int t)
@@ -258,21 +281,8 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 		Log.d("NETWORK","Searching for a Wii...");
 		String output = null;
 
-		InetAddress localhost=null;
-
-		try {
-			localhost = InetAddress.getLocalHost();
-		} catch (UnknownHostException e1) {
-			Log.d("NETWORK","Auto-locate not supported on this system.");
-			updateStatus("Auto-locate not supported.");
-			System.exit(8);
-
-			e1.printStackTrace();
-		}
-
 		// this code assumes IPv4 is used
-		byte[] ip = localhost.getAddress();
-		
+		String ip = ip2;	
 		
 		Log.d("ip2",ip2);
 
@@ -280,8 +290,9 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 		{
 			try
 			{
-				ip[3] = (byte)i; 
-				InetAddress address = InetAddress.getByAddress(ip);
+				ip = ip2 + i; 
+				InetAddress address = InetAddress.getByName(ip);
+//				Log.d("NETWORK","Checking "+ip);
 
 				if (address.isReachable(10*t))
 				{
@@ -294,7 +305,7 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 						socket = new Socket(output,port);
 						Log.d("NETWORK","and is potentially a Wii!");
 						updateStatus("Wii found!");
-						//                                                   wiiip.setText(output);
+						// wiiip.setText(output);
 
 						host=output;
 						return;
