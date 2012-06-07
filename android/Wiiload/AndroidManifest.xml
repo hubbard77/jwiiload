@@ -8,7 +8,6 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
     <uses-sdk
-        android:maxSdkVersion="14"
         android:minSdkVersion="3"
         android:targetSdkVersion="14" />
 
@@ -30,6 +29,9 @@
             <intent-filter>
             </intent-filter>
         </activity>
+        <activity android:name="com.google.ads.AdActivity"
+              android:configChanges="keyboard"/>
     </application>
+    
 
 </manifest>
