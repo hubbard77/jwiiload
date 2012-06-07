@@ -11,6 +11,7 @@ import java.io.OutputStream;
 import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.zip.*;
 
 import com.google.ads.AdRequest;
@@ -20,6 +21,7 @@ import com.google.ads.AdView;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
@@ -40,6 +42,8 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 	public static Context getAppContext() {
 		return context;
 	}
+
+	public static final String PREFS_NAME = "wiimote";
 
 	private static Context context;
 	static Socket socket;
@@ -62,12 +66,13 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 
 	static TextView status;
 	static TextView fname;
-	static String lastip = "0.0.0.0";
+	static String lastip;
 	static EditText wiiip;
 
 	public static void tripleScan()
 	{
 		stopscan = false;
+		host = null;
 		for (int x=1; x<3; x++)
 		{
 			scan(x);
@@ -82,30 +87,39 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 		super.onCreate(savedInstanceState);
 		context = getApplicationContext();
 
+		SharedPreferences settings = getSharedPreferences(PREFS_NAME,0);
+
+		lastip = settings.getString("lastip", "0.0.0.0");
+
+		port = settings.getInt("port", 4299);
+		arguments = settings.getString("args",arguments);
+
 		status = new TextView(context);
-		fname = new TextView(context);
 		setContentView(R.layout.main);
+		fname = (TextView)(findViewById(R.id.textView1));
 
 		wiiip = (EditText)findViewById(R.id.editText1);
-//		wiiip.setText("Hello");
-		
+		wiiip.setText(lastip);
+
+		//		wiiip.setText("Hello");
+
 		updateStatus("Ready to send data");
 		open = (Button)(findViewById(R.id.button3));
 		scan = (Button)(findViewById(R.id.button2));
 		send = (Button)(findViewById(R.id.button1));
-//		b.setText("Choose File");
-//		c.setText("Send to Wii");
+		//		b.setText("Choose File");
+		//		c.setText("Send to Wii");
 		send.setEnabled(false);
-//		a.addView(b);
-//		a.addView(status);
+		//		a.addView(b);
+		//		a.addView(status);
 
 		WifiManager wifiManager = (WifiManager) getSystemService(WIFI_SERVICE);
 		WifiInfo wifiInfo = wifiManager.getConnectionInfo();
 		int ipAddress = wifiInfo.getIpAddress();
 		ip2 = intToIp(ipAddress);
 
-//		a.addView(c,params);  
-//		a.addView(fname, params2);
+		//		a.addView(c,params);  
+		//		a.addView(fname, params2);
 		open.setOnClickListener(this);
 		scan.setOnClickListener(this);
 		send.setOnClickListener(this);
@@ -120,11 +134,23 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 		}
 		else if (v==send)
 		{
+			host = wiiip.getText().toString();
+
 			new Thread()
 			{
 				@Override
 				public void run()
 				{
+					try {
+						Log.d("hi","Opening connection to "+host);
+						socket = new Socket(host,port);
+					} catch (UnknownHostException e) {
+						Log.d("","Poor format");
+						return;
+					} catch (IOException e) {
+						Log.d("","Network error");
+						return;
+					}
 					wiisend();
 				}
 			}.start();
@@ -144,17 +170,25 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 			}.start();
 		}
 	}
-	
-    private Handler handler = new Handler() {
-        @Override
-        public void handleMessage(Message msg) {
-        		scan.setEnabled(true);
-        		wiiip.setEnabled(true);
-        		if (host!=null && !host.equals("rate"))
-        			wiiip.setText(host);
 
-        }
-};
+	public static Handler handler = new Handler() {
+		@Override
+		public void handleMessage(Message msg) {
+
+			if (msg.what==0) // Scan button ending
+			{
+				scan.setEnabled(true);
+				wiiip.setEnabled(true);
+				//			open.setEnabled(true);
+				if (host!=null && !host.equals("rate"))
+					wiiip.setText(host);
+			} else if (msg.what==1)
+			{
+				updateName();
+			}
+
+		}
+	};
 
 	public static void compressData()
 	{
@@ -180,7 +214,10 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 		{
 			// Open socket to wii with host and port and setup output stream
 			if (host==null)
+			{
+				host = wiiip.getText().toString();
 				socket = new Socket(host, port);
+			}
 
 			compressData();
 
@@ -330,7 +367,8 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 						socket = new Socket(output,port);
 						Log.d("NETWORK","and is potentially a Wii!");
 						updateStatus("Wii found!");
-//						 wiiip.setText(output);
+						socket.close();
+						//						 wiiip.setText(output);
 
 						host=output;
 						return;
@@ -360,22 +398,22 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 		return;
 
 	}
-	
-	  public boolean onCreateOptionsMenu(Menu menu) {
-	        menu.add(0, 1, 2, "Arguments");
-	        menu.add(0,1,2,"Change Port");
-	        menu.add(0,1,2,"Display Ad");
-	        return true;
-	    }
-	 
-	    /* Handles item selections */
-	    public boolean onOptionsItemSelected(MenuItem item) {
-	        switch (item.getItemId()) {
-	    	case 1:
-	            return true;
-	        }
-	        return false;
-	    }
+
+	public boolean onCreateOptionsMenu(Menu menu) {
+		menu.add(0, 1, 2, "Arguments");
+		menu.add(0,1,2,"Change Port");
+		menu.add(0,1,2,"Display Ad");
+		return true;
+	}
+
+	/* Handles item selections */
+	public boolean onOptionsItemSelected(MenuItem item) {
+		switch (item.getItemId()) {
+		case 1:
+			return true;
+		}
+		return false;
+	}
 
 	public static File compressFile(File raw) throws IOException
 	{
@@ -394,33 +432,43 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 	}
 
 	public class BannerExample extends Activity {
-		  private AdView adView;
+		private AdView adView;
 
-		  @Override
-		  public void onCreate(Bundle savedInstanceState) {
-		    super.onCreate(savedInstanceState);
-		    setContentView(R.layout.main);
+		@Override
+		public void onCreate(Bundle savedInstanceState) {
+			super.onCreate(savedInstanceState);
+			setContentView(R.layout.main);
 
-		    // Create the adView
-		    adView = new AdView(this, AdSize.BANNER, "a14fce128a3b08a");
+			// Create the adView
+			adView = new AdView(this, AdSize.BANNER, "a14fce128a3b08a");
 
-		    // Lookup your LinearLayout assuming itÕs been given
-		    // the attribute android:id="@+id/mainLayout"
-		    LinearLayout layout = (LinearLayout)findViewById(R.id.mainLayout);
+			// Lookup your LinearLayout assuming itÕs been given
+			// the attribute android:id="@+id/mainLayout"
+			LinearLayout layout = (LinearLayout)findViewById(R.id.mainLayout);
 
-		    // Add the adView to it
-		    layout.addView(adView);
+			// Add the adView to it
+			layout.addView(adView);
 
-		    // Initiate a generic request to load it with an ad
-		    adView.loadAd(new AdRequest());
-		  }
-
-		  @Override
-		  public void onDestroy() {
-		    if (adView != null) {
-		      adView.destroy();
-		    }
-		    super.onDestroy();
-		  }
+			// Initiate a generic request to load it with an ad
+			adView.loadAd(new AdRequest());
 		}
+
+		@Override
+		public void onDestroy() {
+			if (adView != null) {
+				adView.destroy();
+			}
+			super.onDestroy();
+		}
+	}
+
+	public void onClose()
+	{
+		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+		SharedPreferences.Editor editor = settings.edit();
+		editor.putString("lastip",lastip);
+		editor.putInt("port", port);
+		editor.putString("args",arguments);
+		//	       editor.putBoolean("path", arg1)
+	}
 }

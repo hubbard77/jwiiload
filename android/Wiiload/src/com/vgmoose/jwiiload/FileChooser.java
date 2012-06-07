@@ -158,7 +158,7 @@ public class FileChooser extends ListActivity
     {
 //    	Toast.makeText(this, "File Clicked: "+o.getName(), Toast.LENGTH_SHORT).show();
 		WiiloadActivity.filename = new File(o.getPath());
-		WiiloadActivity.updateName();
+		WiiloadActivity.handler.sendEmptyMessage(1);
 		finish();
     }
 
