@@ -20,9 +20,8 @@
 
         <Button
             android:id="@+id/button3"
-            android:layout_width="wrap_content"
+            android:layout_width="94dp"
             android:layout_height="wrap_content"
-            android:layout_weight="0.15"
             android:text="Open..." />
     </LinearLayout>
 
@@ -38,7 +37,7 @@
             android:gravity="center_horizontal"
             android:ems="10"
             android:inputType="number"
-             android:digits="123456789 ,-.0"
+            android:digits="123456789 ,-.0"
             android:text="0.0.0.0" />
 
         <Button

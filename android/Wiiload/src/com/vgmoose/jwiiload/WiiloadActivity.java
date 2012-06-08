@@ -12,6 +12,7 @@ import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.zip.*;
 
 import com.google.ads.AdRequest;
@@ -19,7 +20,9 @@ import com.google.ads.AdSize;
 import com.google.ads.AdView;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.wifi.WifiInfo;
@@ -27,6 +30,8 @@ import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.text.InputType;
+import android.text.method.DigitsKeyListener;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -68,6 +73,10 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 	static TextView fname;
 	static String lastip;
 	static EditText wiiip;
+	
+	static String homeDir;
+	
+	static boolean[] filetypes = new boolean[5];
 
 	public static void tripleScan()
 	{
@@ -123,12 +132,22 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 		open.setOnClickListener(this);
 		scan.setOnClickListener(this);
 		send.setOnClickListener(this);
+		
+		String[] bsarray = settings.getString("files", "true,true,true,true,false").split(",");
+		Log.d("test",Arrays.toString(bsarray));
+		
+		for (int x=0;x<5;x++)
+			filetypes[x] = Boolean.parseBoolean(bsarray[x]);
+		Log.d("test",Arrays.toString(filetypes));
+		
+		homeDir = settings.getString("home", "/sdcard/");
 
 	}
 
 	public void onClick(View v) {
 		if (v==open)
 		{
+			FileChooser.foldermode = false;
 			Intent intent = new Intent(this, FileChooser.class);
 			this.startActivity(intent);
 		}
@@ -184,7 +203,21 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 					wiiip.setText(host);
 			} else if (msg.what==1)
 			{
+				send.setEnabled(false);
+				fname.setText("Compressing data...");
+				new Thread()
+				{
+					@Override
+					public void run()
+					{
+						compressData();
+						handler.sendEmptyMessage(2);
+					}
+				}.start();
+			} else if (msg.what==2)
+			{
 				updateName();
+				send.setEnabled(true);
 			}
 
 		}
@@ -219,7 +252,7 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 				socket = new Socket(host, port);
 			}
 
-			compressData();
+			//			compressData();
 
 			updateStatus("Talking to Wii...");
 
@@ -318,8 +351,7 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 
 	static void updateName()
 	{
-		fname.setText(filename.getName());
-		send.setEnabled(true);
+		fname.setText(filename.getName()+" "+arguments);
 	}
 
 	static void updateStatus(String s)
@@ -400,16 +432,73 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 	}
 
 	public boolean onCreateOptionsMenu(Menu menu) {
-		menu.add(0, 1, 2, "Arguments");
-		menu.add(0,1,2,"Change Port");
-		menu.add(0,1,2,"Display Ad");
+		menu.add(0, 1, 2, "Set Arguments");
+		menu.add(0,2,2,"Change Port");
 		return true;
+	}
+	
+
+	public void createAlert(final int type)
+	{
+		AlertDialog.Builder alert = new AlertDialog.Builder(this);
+
+		if (type==1)
+		{
+			alert.setTitle("Set Arguments");
+			alert.setMessage("Enter any number of arguments for the program.");
+		}
+		else
+		{
+			alert.setTitle("Change Port");
+			alert.setMessage("Enter a new port number to use. (default: 4299)");
+		}
+
+		// Set an EditText view to get user input 
+		final EditText input = new EditText(this);
+		if (type!=1)
+		{
+			input.setInputType(InputType.TYPE_CLASS_PHONE);
+			input.setKeyListener(DigitsKeyListener.getInstance());
+			input.setText(""+port);
+		}
+		else
+			input.setText(arguments);
+		alert.setView(input);
+
+		alert.setPositiveButton("Confirm", new DialogInterface.OnClickListener() {
+			public void onClick(DialogInterface dialog, int whichButton) {
+				String value = input.getText().toString();
+				if (type==1)
+				{
+					arguments=value;
+					if (send.isEnabled())
+						updateName();
+				}
+				else
+					port=Integer.parseInt(value);
+			}
+		});
+
+		alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+			public void onClick(DialogInterface dialog, int whichButton) {
+//				if (type==1)
+//					arguments="";
+//				else
+//					port=Integer.parseInt(value);
+			}
+		});
+		
+		alert.show();
 	}
 
 	/* Handles item selections */
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
 		case 1:
+			createAlert(1);
+			return true;
+		case 2:
+			createAlert(2);
 			return true;
 		}
 		return false;
@@ -462,7 +551,8 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 		}
 	}
 
-	public void onClose()
+	@Override
+	public void onSaveInstanceState(Bundle savedInstanceState) 
 	{
 		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
 		SharedPreferences.Editor editor = settings.edit();
@@ -470,5 +560,7 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 		editor.putInt("port", port);
 		editor.putString("args",arguments);
 		//	       editor.putBoolean("path", arg1)
+		  super.onSaveInstanceState(savedInstanceState);
+
 	}
 }
