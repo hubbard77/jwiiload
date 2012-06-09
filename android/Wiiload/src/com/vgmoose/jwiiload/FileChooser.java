@@ -10,9 +10,8 @@ import android.app.AlertDialog;
 import android.app.ListActivity;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.os.Bundle;
-import android.util.SparseBooleanArray;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -20,6 +19,8 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -32,9 +33,7 @@ public class FileChooser extends ListActivity
 {
 	private File currentDir;
 	private FileArrayAdapter adapter;
-	static boolean foldermode;
 	String homeDir;
-	boolean[] visible;
 	//	private Stack<File> history;
 
 	//	private 
@@ -42,17 +41,11 @@ public class FileChooser extends ListActivity
 	public void onCreate(Bundle savedInstanceState) 
 	{
 		super.onCreate(savedInstanceState);
+
 		homeDir = WiiloadActivity.homeDir;
 		currentDir = new File(homeDir);
 		fill(currentDir);
 
-		if (foldermode)
-		{
-			boolean[] javasucks ={false,false,false,true,false};
-			visible=javasucks;
-		}
-		else
-			visible=WiiloadActivity.filetypes;
 	}
 
 	private void fill(File f)
@@ -63,12 +56,16 @@ public class FileChooser extends ListActivity
 		List<Option>fls = new ArrayList<Option>();
 		try{
 			for(File ff: dirs)
-			{					
+			{		
 				if(ff.isDirectory())
-					dir.add(new Option(ff.getName(),"Folder",ff.getAbsolutePath()));
-				else if ((ff.getName().endsWith(".dol") || ff.getName().endsWith(".elf") || ff.getName().endsWith(".zip")) && WiiloadActivity.fext)
 				{
-					fls.add(new Option(ff.getName(),"File Size: "+ff.length(),ff.getAbsolutePath()));
+					if (WiiloadActivity.filetypes[3])
+						dir.add(new Option(ff.getName(),"Folder",ff.getAbsolutePath()));
+				}
+				else
+				{					
+					if (WiiloadActivity.filetypes[getType(ff)-R.drawable.adolfile])
+						fls.add(new Option(ff.getName(),"File Size: "+ff.length(),ff.getAbsolutePath()));
 				}
 			}
 		}catch(Exception e)
@@ -147,11 +144,14 @@ public class FileChooser extends ListActivity
 			if (o != null) {
 				TextView t1 = (TextView) v.findViewById(R.id.TextView01);
 				TextView t2 = (TextView) v.findViewById(R.id.TextView02);
+				ImageView iv = (ImageView) v.findViewById(R.id.imageView1);
 
 				if(t1!=null)
 					t1.setText(o.getName());
 				if(t2!=null)
 					t2.setText(o.getData());
+				if (iv!=null)
+					iv.setImageResource(getType(o));
 
 			}
 			return v;
@@ -160,6 +160,38 @@ public class FileChooser extends ListActivity
 
 	}
 
+	int getType(File ff)
+	{
+		if (ff.isDirectory())
+			return R.drawable.dfoldericon;
+		else if (ff.getName().toLowerCase().endsWith(".zip"))
+			return R.drawable.czipfile;
+		else if (ff.getName().toLowerCase().endsWith(".dol"))
+			return R.drawable.adolfile;
+		else if (ff.getName().toLowerCase().endsWith(".elf"))
+			return R.drawable.belffile;
+		else
+			return R.drawable.efileblank;
+//		return 1;
+	}
+
+	int getType(Option o)
+	{
+		if (o.getData().equals("Folder"))
+			return R.drawable.dfoldericon;
+		else if (o.getName().toLowerCase().endsWith(".zip"))
+			return R.drawable.czipfile;
+		else if (o.getName().toLowerCase().endsWith(".dol"))
+			return R.drawable.adolfile;
+		else if (o.getName().toLowerCase().endsWith(".elf"))
+			return R.drawable.belffile;
+		else if (o.getName().equals(".."))
+			return R.drawable.prettup2;
+		else
+			return R.drawable.efileblank;
+
+	}
+	
 	@Override
 	protected void onListItemClick(ListView l, View v, int position, long id) {
 		// TODO Auto-generated method stub
@@ -184,51 +216,50 @@ public class FileChooser extends ListActivity
 	}
 
 	public boolean onCreateOptionsMenu(Menu menu) {
-		if (!foldermode)
-		{
-			menu.add(0, 1, 2, "Filetype Filter...");
-			menu.add(0,2,2,"Set Home Folder");
-		}
-		else
-		{
-			menu.add(0,1,2,"Choose current folder");
-			menu.add(0,2,2,"Exit Folder Select");
-		}
+		menu.add(0, 1, 2, "Filetype Filter...");
+		menu.add(0,2,2,"Set as Home Folder");
+		menu.add(0,3,2,"Make New Folder");
 		return true;
 	}
 
 	public boolean onOptionsItemSelected(MenuItem item) {
-		if (!foldermode)
-		{
+		switch (item.getItemId()) {
 
-			switch (item.getItemId()) {
+		case 1:
+			filter();
+			return true;
+		case 2:
+			Toast.makeText(this,"Set "+currentDir.getPath()+" to home directory.",Toast.LENGTH_LONG).show();
+			homeDir = currentDir.getPath();
+			WiiloadActivity.homeDir = homeDir;
+			return true;
+		case 3:
+			AlertDialog.Builder alert = new AlertDialog.Builder(this);
+			alert.setTitle("Create New Folder");
+			alert.setMessage("Enter the name for the new folder:");
+			final EditText input = new EditText(this);
+			alert.setView(input);
 
-			case 1:
-				filter();
-				return true;
-			case 2:
-				foldermode = true;
-				Toast.makeText(this,"Choose a folder to serve as home directory.",Toast.LENGTH_LONG).show();
-				Intent intent = new Intent(this, FileChooser.class);
-				this.startActivity(intent);
-				return true;
-			}
-		}
-		else
-		{
-			switch (item.getItemId())
-			{
-			case 1:
-				homeDir = currentDir.getPath();
-				foldermode = false;
-				WiiloadActivity.homeDir = homeDir;
-				finish();
-				return true;
-			case 2:
-				foldermode = false;
-				finish();
-				return true;
-			}
+			alert.setPositiveButton("Confirm", new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog, int whichButton) {
+					String name = input.getText().toString();
+
+					if (name!=null)
+					{
+						File newfolder = new File(currentDir+"/"+name);
+						Log.d("success","Making of "+currentDir+"/"+name+" was "+newfolder.mkdirs());
+					}
+					fill(currentDir);
+				}
+			});
+
+			alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog, int whichButton) {
+				}
+			});
+
+			alert.show();
+			return true;
 		}
 		return false;
 	}
@@ -236,25 +267,25 @@ public class FileChooser extends ListActivity
 	public void filter()
 	{
 		final CharSequence[] items = {".dol Files", ".elf Files", ".zip Files", "Folders", "Everything Else"};
-		final boolean[] states = visible;
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		builder.setTitle("Display which types of items?");
-		builder.setMultiChoiceItems(items, states, new DialogInterface.OnMultiChoiceClickListener(){
+		builder.setMultiChoiceItems(items, WiiloadActivity.filetypes, new DialogInterface.OnMultiChoiceClickListener(){
 			public void onClick(DialogInterface dialogInterface, int item, boolean state) {
 			}
 		});
 		builder.setPositiveButton("Confirm", new DialogInterface.OnClickListener() {
 			public void onClick(DialogInterface dialog, int id) {
-				SparseBooleanArray CheCked = ((AlertDialog)dialog).getListView().getCheckedItemPositions();
-				if(CheCked.get(CheCked.keyAt(0)) == true){
-					//	                Toast.makeText(Backup.this, "Item 1", Toast.LENGTH_SHORT).show();
-				}
-				if(CheCked.get(CheCked.keyAt(1)) == true){
-					//	                Toast.makeText(Backup.this, "Item 2", Toast.LENGTH_SHORT).show();
-				}
-				if(CheCked.get(CheCked.keyAt(2)) == true){
-					//	                Toast.makeText(Backup.this, "Item 3", Toast.LENGTH_SHORT).show();
-				}
+//				SparseBooleanArray CheCked = ((AlertDialog)dialog).getListView().getCheckedItemPositions();
+//				if(CheCked.get(CheCked.keyAt(0)) == true){
+//					//	                Toast.makeText(Backup.this, "Item 1", Toast.LENGTH_SHORT).show();
+//				}
+//				if(CheCked.get(CheCked.keyAt(1)) == true){
+//					//	                Toast.makeText(Backup.this, "Item 2", Toast.LENGTH_SHORT).show();
+//				}
+//				if(CheCked.get(CheCked.keyAt(2)) == true){
+//					//	                Toast.makeText(Backup.this, "Item 3", Toast.LENGTH_SHORT).show();
+//				}
+				fill(currentDir);
 			}
 		});
 		builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
@@ -277,9 +308,8 @@ public class FileChooser extends ListActivity
 			//				fill(history.pop());
 			//				return true;
 			//			}
-			if(currentDir.getName().equalsIgnoreCase("sdcard") || currentDir.getName().equalsIgnoreCase(""))
+			if(homeDir.contains(currentDir.getPath()))
 			{
-				foldermode=false;
 				return super.onKeyDown(keycode,event);
 			}
 			else

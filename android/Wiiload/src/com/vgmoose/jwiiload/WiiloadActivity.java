@@ -28,6 +28,7 @@ import android.content.SharedPreferences;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.text.InputType;
@@ -67,7 +68,6 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 
 	static File compressed;
 	static  boolean stopscan = false;
-	static boolean fext=true;
 
 	static TextView status;
 	static TextView fname;
@@ -140,20 +140,28 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 			filetypes[x] = Boolean.parseBoolean(bsarray[x]);
 		Log.d("test",Arrays.toString(filetypes));
 		
-		homeDir = settings.getString("home", "/sdcard/");
 
+		if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED) || Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED_READ_ONLY))
+			homeDir = settings.getString("home", "/sdcard/");
+		else
+			homeDir = settings.getString("home", "/");
+
+		
 	}
 
 	public void onClick(View v) {
 		if (v==open)
 		{
-			FileChooser.foldermode = false;
 			Intent intent = new Intent(this, FileChooser.class);
 			this.startActivity(intent);
 		}
 		else if (v==send)
 		{
 			host = wiiip.getText().toString();
+			send.setEnabled(false);
+			open.setEnabled(false);
+			scan.setEnabled(false);
+			wiiip.setEnabled(false);
 
 			new Thread()
 			{
@@ -171,6 +179,7 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 						return;
 					}
 					wiisend();
+					handler.sendEmptyMessage(3);
 				}
 			}.start();
 		}
@@ -205,6 +214,7 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 			{
 				send.setEnabled(false);
 				fname.setText("Compressing data...");
+				open.setEnabled(false);
 				new Thread()
 				{
 					@Override
@@ -218,6 +228,14 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 			{
 				updateName();
 				send.setEnabled(true);
+				open.setEnabled(true);
+			}
+			else if (msg.what==3)
+			{
+				send.setEnabled(true);
+				open.setEnabled(true);
+				scan.setEnabled(true);
+				wiiip.setEnabled(true);
 			}
 
 		}
@@ -318,8 +336,8 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 
 			lastip = host;
 
-			if (compressed!=filename)
-				compressed.delete();
+//			if (compressed!=filename)
+//				compressed.delete();
 
 		}
 		catch (Exception ce)
@@ -552,15 +570,27 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 	}
 
 	@Override
-	public void onSaveInstanceState(Bundle savedInstanceState) 
+	public void onStop()
 	{
+	    super.onStop();
+
 		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
 		SharedPreferences.Editor editor = settings.edit();
 		editor.putString("lastip",lastip);
 		editor.putInt("port", port);
 		editor.putString("args",arguments);
-		//	       editor.putBoolean("path", arg1)
-		  super.onSaveInstanceState(savedInstanceState);
-
+	    editor.putString("home", homeDir);
+	    String files="";
+	    
+	    for (boolean s : filetypes)
+	    	files+=""+s+",";
+	    
+	    files = files.substring(0, files.length()-1);
+	    
+	    editor.putString("files", files);
+		editor.commit();
+		
+		if (compressed!=null)
+			compressed.delete();
 	}
 }

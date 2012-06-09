@@ -14,8 +14,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="0.87"
-            android:text="No file selected"
             android:gravity="center_horizontal"
+            android:text="No file selected"
             android:textAppearance="?android:attr/textAppearanceMedium" />
 
         <Button
@@ -34,10 +34,10 @@
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:gravity="center_horizontal"
-            android:ems="10"
-            android:inputType="number"
             android:digits="123456789 ,-.0"
+            android:ems="10"
+            android:gravity="center_horizontal"
+            android:inputType="number"
             android:text="0.0.0.0" />
 
         <Button
