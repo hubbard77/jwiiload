@@ -66,10 +66,10 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 	static String s;
 	static String arguments = "";
 	static File filename;
-	
+
 	static MenuItem mens1;
 	static MenuItem mens2;
-	
+
 	static String title;
 
 	static File compressed;
@@ -96,7 +96,7 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 			if (host!=null)
 				break;
 		}
-		
+
 	}
 
 	/** Called when the activity is first created. */
@@ -123,7 +123,7 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 
 		//		wiiip.setText("Hello");
 
-		updateStatus("Ready to send data");
+		//		updateStatus("Ready to send data");
 		open = (Button)(findViewById(R.id.button3));
 		scan = (Button)(findViewById(R.id.button2));
 		send = (Button)(findViewById(R.id.button1));
@@ -156,6 +156,12 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 			homeDir = settings.getString("home", "/sdcard/");
 		else
 			homeDir = settings.getString("home", "/");	
+		
+		if (filename!=null)
+		{
+			updateName();
+			send.setEnabled(true);
+		}
 
 
 		if (showAds)
@@ -218,10 +224,12 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 					try {
 						if (socket!=null)
 						{
-						Log.d("CONNECT",socket.isConnected()+" Opening connection to "+host);
-						Log.d("CONNECT",socket.getInetAddress().toString().substring(1)+"!="+host);
+							Log.d("CONNECT",socket.isClosed()+" Opening connection to "+host);
+							Log.d("CONNECT",socket.getInetAddress().toString().substring(1)+"!="+host);
+
+							Log.d("CONNECT",""+!myEquals(socket.getInetAddress().toString().substring(1),(host)));
 						}
-						if (socket==null || !socket.getInetAddress().toString().substring(1).equalsIgnoreCase(host))
+						if (socket==null || (!myEquals(socket.getInetAddress().toString().substring(1),(host)) && socket.isClosed()))
 						{
 							socket = new Socket(host,port);
 							Log.d("socket","creating new socket");
@@ -246,6 +254,7 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 		{
 			scan.setEnabled(false);
 			wiiip.setEnabled(false);
+			send.setEnabled(false);
 			new Thread()
 			{
 				@Override
@@ -266,16 +275,18 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 			{
 				scan.setEnabled(true);
 				wiiip.setEnabled(true);
+				if (open.isEnabled() && filename!=null)
+					send.setEnabled(true);
 				//			open.setEnabled(true);
 				if (host!=null && !host.equals("rate"))
 					wiiip.setText(host);
 
-				
+
 
 			} else if (msg.what==1)
 			{
 				send.setEnabled(false);
-				fname.setText("Compressing data...");
+				//				fname.setText("Compressing data...");
 				open.setEnabled(false);
 				new Thread()
 				{
@@ -289,7 +300,8 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 			} else if (msg.what==2)
 			{
 				updateName();
-				send.setEnabled(true);
+				if (wiiip.isEnabled())
+					send.setEnabled(true);
 				open.setEnabled(true);
 			}
 			else if (msg.what==3)
@@ -311,6 +323,10 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 				builder.setNeutralButton("Confirm", null);
 				AlertDialog alert = builder.create();
 				alert.show();
+			}
+			else if (msg.what==5)
+			{
+				fname.setText(warning);
 			}
 
 		}
@@ -343,8 +359,17 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 		try
 		{
 			// Open socket to wii with host and port and setup output stream
+
+			//			updateStatus("Compressing Data");
+
+			if (compressed==null || !compressed.exists())
+				compressed=filename;
+
+			updateStatus("Talking to Wii...");
+
 			if (host==null)
 			{
+				Log.d("NETWORK","host is "+host+", and we're doing this check.");
 				host = wiiip.getText().toString();
 				socket = new Socket(host, port);
 			}
@@ -387,21 +412,28 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 
 			//dos.size();   // Number of bytes sent so far, should be 16
 
-			updateStatus("Sending "+filename.getName());
+			//			updateStatus("Sending "+filename.getName());
 			Log.d("NETWORK","Sending "+filename.getName()+"...");
 			dos.flush();
 
+			int chunk=0;
+
 			while ( ( numRead=bis.read(b)) > 0) {
 				dos.write(b,0,numRead);
+				chunk++;
+				updateStatus("Sending... ("+(int)((((double)chunk)/(clength/((double)(b.length))))*100)+"%)");
+
 				dos.flush();
 			}
 			dos.flush();
 
-			updateStatus("Talking to Wii...");
 			if (arguments.length()!=0)
+			{
+				updateStatus("Sending arguments...");
 				Log.d("NETWORK","Sending arguments...");
-			else
-				Log.d("NETWORK","Finishing up...");
+			}
+
+			updateStatus("Finishing up...");
 
 			dos.writeBytes(filename.getName()+"\0");
 
@@ -410,10 +442,15 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 			for (String x : argue)
 				dos.writeBytes(x+"\0");
 
-			updateStatus("All done!");
+			updateStatus("File transfer successful!");
 			Log.d("NETWORK","\nFile transfer successful!");
 
 			lastip = host;
+
+			socket.close();
+			socket = null;
+
+
 
 			//			if (compressed!=filename)
 			//				compressed.delete();
@@ -421,10 +458,11 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 		}
 		catch (Exception ce)
 		{
-			updateStatus("No Wii found");
+			//			updateStatus("No Wii found");
 			//                    int a=0;
-			
+
 			title = "No Wii Found";
+			ce.printStackTrace();
 			warning = ce.getMessage();
 			handler.sendEmptyMessage(4);
 
@@ -458,6 +496,8 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 	static void updateStatus(String s)
 	{
 		Log.d("STRING",s);
+		warning = s;
+		handler.sendEmptyMessage(5);
 	}
 
 	public String intToIp(int i) {
@@ -472,7 +512,7 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 	{                       
 		host=null;
 
-		updateStatus("Finding Wii...");
+		//		updateStatus("Finding Wii...");
 		Log.d("NETWORK","Searching for a Wii...");
 		String output = null;
 
@@ -499,8 +539,9 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 					{
 						socket = new Socket(output,port);
 						Log.d("NETWORK","and is potentially a Wii!");
-						updateStatus("Wii found!");
-						// socket.close();
+
+						//						updateStatus("Wii found!");
+//						socket.close();
 						//						 wiiip.setText(output);
 
 						host=output;
@@ -511,7 +552,7 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 
 				}
 			} catch (ConnectException e) {
-				updateStatus("Rate limited");
+				//				updateStatus("Rate limited");
 				host="rate";
 				title="Rate Limited";
 				warning=e.getMessage();
@@ -528,7 +569,7 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 
 			if (stopscan)
 			{
-				updateStatus("Scan aborted");
+				//				updateStatus("Scan aborted");
 				Log.d("NETWORK","Scan aborted");
 				break;
 			}
@@ -652,11 +693,17 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 		if (compressed!=null && filename!=compressed)
 			compressed.delete();
 	}
-	
-	public void onResume()
+
+	public static boolean myEquals(String s, String t)
 	{
-		super.onResume();
-		if (compressed==null)
-			compressData();
+		if (s.length()!=t.length())
+			return false;
+
+		for (int x=0;x<s.length();x++)
+			if (s.charAt(x)!=t.charAt(x))
+				return false;
+
+		return true;
+
 	}
 }
