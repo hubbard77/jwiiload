@@ -61,10 +61,16 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 	static Button send;
 
 	static String ip2;
+	static String warning;
 
 	static String s;
 	static String arguments = "";
 	static File filename;
+	
+	static MenuItem mens1;
+	static MenuItem mens2;
+	
+	static String title;
 
 	static File compressed;
 	static  boolean stopscan = false;
@@ -73,9 +79,11 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 	static TextView fname;
 	static String lastip;
 	static EditText wiiip;
-	
+
 	static String homeDir;
-	
+	static boolean showAds;
+	static WiiloadActivity curInstance;
+
 	static boolean[] filetypes = new boolean[5];
 
 	public static void tripleScan()
@@ -88,6 +96,7 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 			if (host!=null)
 				break;
 		}
+		
 	}
 
 	/** Called when the activity is first created. */
@@ -99,6 +108,8 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 		SharedPreferences settings = getSharedPreferences(PREFS_NAME,0);
 
 		lastip = settings.getString("lastip", "0.0.0.0");
+
+		showAds = settings.getBoolean("ads",true);
 
 		port = settings.getInt("port", 4299);
 		arguments = settings.getString("args",arguments);
@@ -132,26 +143,60 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 		open.setOnClickListener(this);
 		scan.setOnClickListener(this);
 		send.setOnClickListener(this);
-		
+
 		String[] bsarray = settings.getString("files", "true,true,true,true,false").split(",");
 		Log.d("test",Arrays.toString(bsarray));
-		
+
 		for (int x=0;x<5;x++)
 			filetypes[x] = Boolean.parseBoolean(bsarray[x]);
 		Log.d("test",Arrays.toString(filetypes));
-		
+
 
 		if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED) || Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED_READ_ONLY))
 			homeDir = settings.getString("home", "/sdcard/");
 		else
-			homeDir = settings.getString("home", "/");
+			homeDir = settings.getString("home", "/");	
 
-		
+
+		if (showAds)
+		{
+
+			// Admob Code
+			// Create the adView
+			AdView av = new AdView(this, AdSize.BANNER, "a14fce128a3b08a");
+			// Lookup your LinearLayout assuming it’s been given
+			// the attribute android:id="@+id/mainLayout"
+			LinearLayout layout = (LinearLayout)findViewById(R.id.bottom);
+			// Add the adView to it
+			//	    layout.addView(av);
+			// Initiate a generic request to load it with an ad
+			AdRequest adr = new AdRequest();
+			adr.addTestDevice(AdRequest.TEST_EMULATOR);
+			av.loadAd(adr);
+
+
+			//	    RelativeLayout layout2 = (RelativeLayout)findViewById(R.id.relish);
+
+			layout.addView(av);
+
+		}
+
+		Intent intent = getIntent();
+		if (intent.getData()!=null)
+		{
+			//		Log.d("intent",intent.getData().getPath());
+			filename = new File(intent.getData().getPath());
+			handler.sendEmptyMessage(1);
+		}
+
+
+
 	}
 
 	public void onClick(View v) {
 		if (v==open)
 		{
+			curInstance = this;
 			Intent intent = new Intent(this, FileChooser.class);
 			this.startActivity(intent);
 		}
@@ -162,6 +207,8 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 			open.setEnabled(false);
 			scan.setEnabled(false);
 			wiiip.setEnabled(false);
+			mens1.setEnabled(false);
+			mens2.setEnabled(false);
 
 			new Thread()
 			{
@@ -169,16 +216,28 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 				public void run()
 				{
 					try {
-						Log.d("hi","Opening connection to "+host);
-						socket = new Socket(host,port);
+						if (socket!=null)
+						{
+						Log.d("CONNECT",socket.isConnected()+" Opening connection to "+host);
+						Log.d("CONNECT",socket.getInetAddress().toString().substring(1)+"!="+host);
+						}
+						if (socket==null || !socket.getInetAddress().toString().substring(1).equalsIgnoreCase(host))
+						{
+							socket = new Socket(host,port);
+							Log.d("socket","creating new socket");
+						}
+						wiisend();
 					} catch (UnknownHostException e) {
 						Log.d("","Poor format");
-						return;
+						title = "Hostname Error";
+						warning = e.getMessage();
+						handler.sendEmptyMessage(4);
 					} catch (IOException e) {
 						Log.d("","Network error");
-						return;
+						title = "Network Error";
+						warning = e.getMessage();
+						handler.sendEmptyMessage(4);
 					}
-					wiisend();
 					handler.sendEmptyMessage(3);
 				}
 			}.start();
@@ -210,6 +269,9 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 				//			open.setEnabled(true);
 				if (host!=null && !host.equals("rate"))
 					wiiip.setText(host);
+
+				
+
 			} else if (msg.what==1)
 			{
 				send.setEnabled(false);
@@ -236,6 +298,19 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 				open.setEnabled(true);
 				scan.setEnabled(true);
 				wiiip.setEnabled(true);
+				mens1.setEnabled(true);
+				mens2.setEnabled(true);
+
+
+			}
+			else if (msg.what==4)
+			{
+				AlertDialog.Builder builder = new AlertDialog.Builder(curInstance);
+				builder.setTitle(title);
+				builder.setMessage(warning);
+				builder.setNeutralButton("Confirm", null);
+				AlertDialog alert = builder.create();
+				alert.show();
 			}
 
 		}
@@ -245,6 +320,10 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 	{
 		try
 		{
+
+			if (compressed!=null && filename!=compressed)
+				compressed.delete();
+
 			// Compress the file to send it faster
 			updateStatus("Compressing data...");
 			compressed = compressFile(filename);
@@ -336,14 +415,18 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 
 			lastip = host;
 
-//			if (compressed!=filename)
-//				compressed.delete();
+			//			if (compressed!=filename)
+			//				compressed.delete();
 
 		}
 		catch (Exception ce)
 		{
 			updateStatus("No Wii found");
 			//                    int a=0;
+			
+			title = "No Wii Found";
+			warning = ce.getMessage();
+			handler.sendEmptyMessage(4);
 
 			if (host==null)
 				host="";
@@ -417,7 +500,7 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 						socket = new Socket(output,port);
 						Log.d("NETWORK","and is potentially a Wii!");
 						updateStatus("Wii found!");
-						socket.close();
+						// socket.close();
 						//						 wiiip.setText(output);
 
 						host=output;
@@ -430,9 +513,15 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 			} catch (ConnectException e) {
 				updateStatus("Rate limited");
 				host="rate";
+				title="Rate Limited";
+				warning=e.getMessage();
+				handler.sendEmptyMessage(4);
 				e.printStackTrace();
 				return;
 			} catch (Exception e) {
+				title="Error Occurred";
+				warning=e.getMessage();
+				handler.sendEmptyMessage(4);
 				e.printStackTrace();
 				return;
 			}
@@ -450,11 +539,11 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 	}
 
 	public boolean onCreateOptionsMenu(Menu menu) {
-		menu.add(0, 1, 2, "Set Arguments");
-		menu.add(0,2,2,"Change Port");
+		mens1 = menu.add(0, 1, 2, "Set Arguments");
+		mens2 = menu.add(0,2,2,"Change Port");
 		return true;
 	}
-	
+
 
 	public void createAlert(final int type)
 	{
@@ -499,13 +588,13 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 
 		alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
 			public void onClick(DialogInterface dialog, int whichButton) {
-//				if (type==1)
-//					arguments="";
-//				else
-//					port=Integer.parseInt(value);
+				//				if (type==1)
+				//					arguments="";
+				//				else
+				//					port=Integer.parseInt(value);
 			}
 		});
-		
+
 		alert.show();
 	}
 
@@ -528,7 +617,7 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 		InputStream in = new FileInputStream(raw);
 		OutputStream out =
 			new DeflaterOutputStream(new FileOutputStream(compressed));
-		byte[] buffer = new byte[1000];
+		byte[] buffer = new byte[1024];
 		int len;
 		while((len = in.read(buffer)) > 0) {
 			out.write(buffer, 0, len);
@@ -538,59 +627,36 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 		return compressed;
 	}
 
-	public class BannerExample extends Activity {
-		private AdView adView;
-
-		@Override
-		public void onCreate(Bundle savedInstanceState) {
-			super.onCreate(savedInstanceState);
-			setContentView(R.layout.main);
-
-			// Create the adView
-			adView = new AdView(this, AdSize.BANNER, "a14fce128a3b08a");
-
-			// Lookup your LinearLayout assuming it’s been given
-			// the attribute android:id="@+id/mainLayout"
-			LinearLayout layout = (LinearLayout)findViewById(R.id.mainLayout);
-
-			// Add the adView to it
-			layout.addView(adView);
-
-			// Initiate a generic request to load it with an ad
-			adView.loadAd(new AdRequest());
-		}
-
-		@Override
-		public void onDestroy() {
-			if (adView != null) {
-				adView.destroy();
-			}
-			super.onDestroy();
-		}
-	}
-
 	@Override
 	public void onStop()
 	{
-	    super.onStop();
+		super.onStop();
 
 		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
 		SharedPreferences.Editor editor = settings.edit();
 		editor.putString("lastip",lastip);
 		editor.putInt("port", port);
 		editor.putString("args",arguments);
-	    editor.putString("home", homeDir);
-	    String files="";
-	    
-	    for (boolean s : filetypes)
-	    	files+=""+s+",";
-	    
-	    files = files.substring(0, files.length()-1);
-	    
-	    editor.putString("files", files);
+		editor.putString("home", homeDir);
+		editor.putBoolean("ads", showAds);
+		String files="";
+
+		for (boolean s : filetypes)
+			files+=""+s+",";
+
+		files = files.substring(0, files.length()-1);
+
+		editor.putString("files", files);
 		editor.commit();
-		
-		if (compressed!=null)
+
+		if (compressed!=null && filename!=compressed)
 			compressed.delete();
+	}
+	
+	public void onResume()
+	{
+		super.onResume();
+		if (compressed==null)
+			compressData();
 	}
 }

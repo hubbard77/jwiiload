@@ -11,18 +11,18 @@
 
         <TextView
             android:id="@+id/textView1"
-            android:layout_width="wrap_content"
+            android:layout_width="0dip"
             android:layout_height="wrap_content"
             android:layout_weight="0.87"
             android:gravity="center_horizontal"
-            android:text="No file selected"
+            android:text="@+string/nofile"
             android:textAppearance="?android:attr/textAppearanceMedium" />
 
         <Button
             android:id="@+id/button3"
             android:layout_width="94dp"
             android:layout_height="wrap_content"
-            android:text="Open..." />
+            android:text="@+string/browse" />
     </LinearLayout>
 
     <LinearLayout
@@ -31,26 +31,43 @@
 
         <EditText
             android:id="@+id/editText1"
-            android:layout_width="fill_parent"
+            android:layout_width="0dip"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:digits="123456789 ,-.0"
             android:ems="10"
             android:gravity="center_horizontal"
             android:inputType="number"
-            android:text="0.0.0.0" />
+            android:text="@+string/defip" />
 
         <Button
             android:id="@+id/button2"
             android:layout_width="94dp"
             android:layout_height="wrap_content"
-            android:text="Scan" />
+            android:text="@+string/scan" />
     </LinearLayout>
 
     <Button
         android:id="@+id/button1"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:text="Send to Wii" />
+        android:text="@+string/send" />
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" >
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentRight="true"
+            android:orientation="vertical" 
+            android:id="@+id/bottom">
+
+        </LinearLayout>
+
+    </RelativeLayout>
 
 </LinearLayout>

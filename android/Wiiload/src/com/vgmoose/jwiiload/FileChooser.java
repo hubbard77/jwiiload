@@ -10,6 +10,7 @@ import android.app.AlertDialog;
 import android.app.ListActivity;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -244,7 +245,16 @@ public class FileChooser extends ListActivity
 				public void onClick(DialogInterface dialog, int whichButton) {
 					String name = input.getText().toString();
 
-					if (name!=null)
+					if (name!=null && name.equalsIgnoreCase("I love you"))
+					{
+						WiiloadActivity.showAds = !WiiloadActivity.showAds;	
+						WiiloadActivity.curInstance.onStop();
+						WiiloadActivity.curInstance.finish();
+						finish();
+						
+						reboot();
+					}
+					else if (name!=null)
 					{
 						File newfolder = new File(currentDir+"/"+name);
 						Log.d("success","Making of "+currentDir+"/"+name+" was "+newfolder.mkdirs());
@@ -322,6 +332,11 @@ public class FileChooser extends ListActivity
 		else return super.onKeyDown(keycode,event);  
 
 	}
-
+	
+	public void reboot()
+	{
+		Intent intent = new Intent(this, WiiloadActivity.class);
+		this.startActivity(intent);
+	}
 
 }
