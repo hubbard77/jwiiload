@@ -80,6 +80,7 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 	static String lastip;
 	static EditText wiiip;
 
+	static boolean pester=true;
 	static String homeDir;
 	static boolean showAds;
 	static WiiloadActivity curInstance;
@@ -135,6 +136,15 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 
 		WifiManager wifiManager = (WifiManager) getSystemService(WIFI_SERVICE);
 		WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+		
+		if (!wifiManager.isWifiEnabled() && pester){  
+			AlertDialog.Builder builder = new AlertDialog.Builder(this);
+			builder.setMessage("Turning on Wi-Fi is recommended, but not required.\nWould you like to enable Wi-Fi?").setPositiveButton("Confirm", dialogClickListener)
+			    .setNegativeButton("Cancel", dialogClickListener).setTitle("Wi-Fi is Recommended").show();
+			pester=false;
+		}
+
+		
 		int ipAddress = wifiInfo.getIpAddress();
 		ip2 = intToIp(ipAddress);
 
@@ -638,6 +648,21 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 
 		alert.show();
 	}
+	
+	DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+	    @Override
+	    public void onClick(DialogInterface dialog, int which) {
+	        switch (which){
+	        case DialogInterface.BUTTON_POSITIVE:
+	    		WifiManager wifiManager = (WifiManager) getSystemService(WIFI_SERVICE);
+			    wifiManager.setWifiEnabled(true);
+	            break;
+
+	        case DialogInterface.BUTTON_NEGATIVE:
+	            break;
+	        }
+	    }
+	};
 
 	/* Handles item selections */
 	public boolean onOptionsItemSelected(MenuItem item) {
