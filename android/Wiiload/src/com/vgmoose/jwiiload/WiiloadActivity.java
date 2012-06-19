@@ -136,15 +136,15 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 
 		WifiManager wifiManager = (WifiManager) getSystemService(WIFI_SERVICE);
 		WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-		
+
 		if (!wifiManager.isWifiEnabled() && pester){  
 			AlertDialog.Builder builder = new AlertDialog.Builder(this);
 			builder.setMessage("Turning on Wi-Fi is recommended, but not required.\nWould you like to enable Wi-Fi?").setPositiveButton("Confirm", dialogClickListener)
-			    .setNegativeButton("Cancel", dialogClickListener).setTitle("Wi-Fi is Recommended").show();
+			.setNegativeButton("Cancel", dialogClickListener).setTitle("Wi-Fi is Recommended").show();
 			pester=false;
 		}
 
-		
+
 		int ipAddress = wifiInfo.getIpAddress();
 		ip2 = intToIp(ipAddress);
 
@@ -166,7 +166,7 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 			homeDir = settings.getString("home", "/sdcard/");
 		else
 			homeDir = settings.getString("home", "/");	
-		
+
 		if (filename!=null)
 		{
 			updateName();
@@ -327,12 +327,17 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 			}
 			else if (msg.what==4)
 			{
-				AlertDialog.Builder builder = new AlertDialog.Builder(curInstance);
-				builder.setTitle(title);
-				builder.setMessage(warning);
-				builder.setNeutralButton("Confirm", null);
-				AlertDialog alert = builder.create();
-				alert.show();
+				try
+				{
+
+					AlertDialog.Builder builder = new AlertDialog.Builder(curInstance);
+					builder.setTitle(title);
+					builder.setMessage(warning);
+					builder.setNeutralButton("Confirm", null);
+					AlertDialog alert = builder.create();
+					alert.show();
+
+				} catch (NullPointerException e){}
 			}
 			else if (msg.what==5)
 			{
@@ -551,7 +556,7 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 						Log.d("NETWORK","and is potentially a Wii!");
 
 						//						updateStatus("Wii found!");
-//						socket.close();
+						//						socket.close();
 						//						 wiiip.setText(output);
 
 						host=output;
@@ -648,20 +653,20 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 
 		alert.show();
 	}
-	
-	DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
-	    @Override
-	    public void onClick(DialogInterface dialog, int which) {
-	        switch (which){
-	        case DialogInterface.BUTTON_POSITIVE:
-	    		WifiManager wifiManager = (WifiManager) getSystemService(WIFI_SERVICE);
-			    wifiManager.setWifiEnabled(true);
-	            break;
 
-	        case DialogInterface.BUTTON_NEGATIVE:
-	            break;
-	        }
-	    }
+	DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+		@Override
+		public void onClick(DialogInterface dialog, int which) {
+			switch (which){
+			case DialogInterface.BUTTON_POSITIVE:
+				WifiManager wifiManager = (WifiManager) getSystemService(WIFI_SERVICE);
+				wifiManager.setWifiEnabled(true);
+				break;
+
+			case DialogInterface.BUTTON_NEGATIVE:
+				break;
+			}
+		}
 	};
 
 	/* Handles item selections */
@@ -717,6 +722,15 @@ public class WiiloadActivity extends Activity implements OnClickListener {
 
 		if (compressed!=null && filename!=compressed)
 			compressed.delete();
+	}
+
+	public void finish()
+	{
+		filename=null;
+		compressed=null;
+
+		send.setEnabled(false);
+		super.finish();
 	}
 
 	public static boolean myEquals(String s, String t)
